@@ -1,0 +1,19 @@
+{
+  "name": "com.xedrial.physics",
+  "version": "0.2.0",
+  "displayName": "Xedrial Physics",
+  "description": "A physics library built on Box2D.NetStandard to be able to use 2D physics with ECS, will be updated soon to get built from the ground up as a full featured ECS 2D physics package.",
+  "unity": "2021.3",
+  "dependencies": {
+    "com.unity.entities": "0.51.1-preview.21"
+  },
+  "keywords": [
+    "Physics",
+    "Xedrial"
+  ],
+  "author": {
+    "name": "Xedrial Games",
+    "email": "xedrialgames@gmail.com"
+  },
+  "type": "tool"
+}
