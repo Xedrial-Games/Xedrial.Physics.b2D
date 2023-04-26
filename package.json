@@ -1,7 +1,7 @@
 {
   "name": "com.xedrial.physics.b2d",
   "version": "0.3.0",
-  "displayName": "XedrialPhysics.b2D",
+  "displayName": "Xedrial Box2D Physics",
   "description": "A physics library built on Box2D.NetStandard to be able to use 2D physics with Pure ECS.",
   "unity": "2022.2",
   "dependencies": {
