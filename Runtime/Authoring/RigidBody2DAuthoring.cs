@@ -1,27 +1,26 @@
 using UnityEngine;
-
 using Unity.Entities;
-using Unity.Mathematics;
-
 using Box2D.NetStandard.Dynamics.Bodies;
 
-namespace Xedrial.Physics.Authoring
+using Xedrial.Physics.b2D.Components;
+
+namespace Xedrial.Physics.b2D.Authoring
 {
     [DisallowMultipleComponent]
-    public class RigidBody2DAuthoring : MonoBehaviour, IConvertGameObjectToEntity
+    public class RigidBody2DAuthoring : MonoBehaviour
     {
         [SerializeField] private b2BodyType m_BodyType;
-        [SerializeField] private float2 m_StartLinearVelocity;
-        [SerializeField] private float m_GravityScale = 1;
 
-        public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+        private class RigidBody2DBaker : Baker<RigidBody2DAuthoring>
         {
-            dstManager.World.GetOrCreateSystem<PhysicsWorld>().CreatePhysicsBody(entity, new BodyDef
+            public override void Bake(RigidBody2DAuthoring authoring)
             {
-                BodyType = m_BodyType,
-                GravityScale = m_GravityScale,
-                StartLinearVelocity = m_StartLinearVelocity
-            });
+                Entity entity = GetEntity(TransformUsageFlags.None);
+                AddComponent(entity, new BodyDef
+                {
+                    BodyType = authoring.m_BodyType
+                });
+            }
         }
     }
 }

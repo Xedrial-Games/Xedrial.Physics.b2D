@@ -1,13 +1,12 @@
-using UnityEngine;
-
 using Box2D.NetStandard.Common;
 using Box2D.NetStandard.Dynamics.World;
 using Box2D.NetStandard.Dynamics.World.Callbacks;
 using Unity.Mathematics;
+using UnityEngine;
 using b2Vec2 = System.Numerics.Vector2;
 using Matrix4x4 = UnityEngine.Matrix4x4;
 
-namespace Xedrial.Physics.Debug
+namespace Xedrial.Physics.b2D
 {
     public class DebugDraw : b2DebugDraw
     {

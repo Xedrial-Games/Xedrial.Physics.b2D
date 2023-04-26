@@ -3,10 +3,9 @@ using Box2D.NetStandard.Collision;
 using Box2D.NetStandard.Dynamics.Contacts;
 using Box2D.NetStandard.Dynamics.World;
 using Box2D.NetStandard.Dynamics.World.Callbacks;
-
 using Unity.Entities;
 
-namespace Xedrial.Physics
+namespace Xedrial.Physics.b2D
 {
     public struct EntityPair
     {
