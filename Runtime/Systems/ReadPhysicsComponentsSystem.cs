@@ -1,10 +1,12 @@
 ﻿using System;
+
 using Unity.Entities;
-using Unity.Mathematics;
 using Unity.Transforms;
-using UnityEngine;
-using Xedrial.Physics.b2D.Components;
+
 using b2Vec2 = System.Numerics.Vector2;
+
+using Xedrial.Mathematics;
+using Xedrial.Physics.b2D.Components;
 
 namespace Xedrial.Physics.b2D.Systems
 {
@@ -14,45 +16,40 @@ namespace Xedrial.Physics.b2D.Systems
     {
         protected override void OnUpdate()
         {
-            var transformLookup = GetComponentLookup<LocalTransform>(true);
-            var velocityFromEntity = GetComponentLookup<PhysicsVelocity2D>(true);
-            var gravityScaleFromEntity = GetComponentLookup<PhysicsGravityScale2D>(true);
-            
-            Entities
-                .WithoutBurst()
-                .WithReadOnly(transformLookup)
-                .WithReadOnly(velocityFromEntity)
-                .WithReadOnly(gravityScaleFromEntity)
-                .ForEach((Entity entity, in PhysicsBody2D body) =>
+            var transformLookup = GetComponentLookup<LocalToWorld>(true);
+            var velocityLookup = GetComponentLookup<PhysicsVelocity2D>(true);
+            var gravityScaleLookup = GetComponentLookup<PhysicsGravityScale2D>(true);
+
+            foreach ((PhysicsBody2D body, Entity entity) in SystemAPI.Query<PhysicsBody2D>().WithEntityAccess())
+            {
+                if (transformLookup.HasComponent(entity))
                 {
-                    if (transformLookup.HasComponent(entity))
-                    {
-                        LocalTransform transform = transformLookup[entity];
+                    LocalToWorld transform = transformLookup[entity];
 
-                        var cPos = new b2Vec2(transform.Position.x, transform.Position.y);
-                        float angle = math.radians(((Quaternion)transform.Rotation).eulerAngles.z);
+                    var cPos = new b2Vec2(transform.Position.x, transform.Position.y);
+                    float angle = xmath.ZRotationFromQuaternion(transform.Rotation);
 
-                        b2Vec2 position = body.RuntimeBody.GetPosition();
-                        if (cPos == position || Math.Abs(angle - body.RuntimeBody.GetAngle()) < 0f)
-                            return;
-                        
-                        body.RuntimeBody.SetTransform(
-                            cPos,
-                            angle
-                        );
-                    }
-
-                    if (velocityFromEntity.HasComponent(entity))
-                    {
-                        PhysicsVelocity2D velocity = velocityFromEntity[entity];
-                        
-                        body.RuntimeBody.SetLinearVelocity(new b2Vec2(velocity.Linear.x, velocity.Linear.y));
-                        body.RuntimeBody.SetAngularVelocity(velocity.Angular);
-                    }
+                    b2Vec2 position = body.RuntimeBody.GetPosition();
+                    if (cPos == position || xmath.Equal(angle, body.RuntimeBody.GetAngle()))
+                        return;
                     
-                    if (gravityScaleFromEntity.HasComponent(entity))
-                        body.RuntimeBody.SetGravityScale(gravityScaleFromEntity[entity].Value);
-                }).Run();
+                    body.RuntimeBody.SetTransform(
+                        cPos,
+                        angle
+                    );
+                }
+
+                if (velocityLookup.HasComponent(entity))
+                {
+                    PhysicsVelocity2D velocity = velocityLookup[entity];
+                    
+                    body.RuntimeBody.SetLinearVelocity(new b2Vec2(velocity.Linear.x, velocity.Linear.y));
+                    body.RuntimeBody.SetAngularVelocity(velocity.Angular);
+                }
+                
+                if (gravityScaleLookup.HasComponent(entity))
+                    body.RuntimeBody.SetGravityScale(gravityScaleLookup[entity].Value);
+            }
         }
     }
 }

@@ -4,12 +4,6 @@ using UnityEngine;
 
 namespace Xedrial.Physics.b2D.Components
 {
-    public struct PhysicsVelocity2D : IComponentData
-    {
-        public float2 Linear;
-        public float Angular;
-    }
-
     public class PhysicsVelocity2DAuthoring : MonoBehaviour
     {
         [SerializeField] public float2 m_Linear;

@@ -1,4 +1,3 @@
-using UnityEngine;
 using Unity.Entities;
 using Unity.Transforms;
 using Unity.Mathematics;
@@ -7,11 +6,13 @@ using Box2D.NetStandard.Dynamics.World;
 using Box2D.NetStandard.Dynamics.Bodies;
 using Box2D.NetStandard.Collision.Shapes;
 using Box2D.NetStandard.Dynamics.Fixtures;
-
+using Unity.Collections;
+using Xedrial.Mathematics;
 using Xedrial.Physics.b2D.Components;
 
 using b2Shape = Box2D.NetStandard.Collision.Shapes.Shape;
 using b2Vec2 = System.Numerics.Vector2;
+using Quaternion = UnityEngine.Quaternion;
 
 namespace Xedrial.Physics.b2D.Systems
 {
@@ -30,8 +31,6 @@ namespace Xedrial.Physics.b2D.Systems
             /*m_ContactListener.SetEntityManager(EntityManager);
             
             m_PhysicsWorld.SetContactListener(m_ContactListener);*/
-
-            RequireForUpdate<PhysicsWorld2D>();
         }
 
         protected override void OnUpdate()
@@ -48,51 +47,85 @@ namespace Xedrial.Physics.b2D.Systems
             if (m_Debug)
                 physicsWorld.DrawDebugData();
 
-            Entities
-                .WithStructuralChanges()
-                .WithoutBurst()
-                .ForEach((Entity entity, in BodyDef bodyDef, in FixtureDef fixtureDef) =>
-                {
-                    CreatePhysicsBody(entity, bodyDef, fixtureDef, physicsWorld);
-                    
-                    EntityManager.RemoveComponent<BodyDef>(entity);
-                    EntityManager.RemoveComponent<FixtureDef>(entity);
-                }).Run();
-        }
+            var transformLookup = GetComponentLookup<LocalToWorld>(true);
+            var velocityLookup = GetComponentLookup<PhysicsVelocity2D>(true);
+            var gravityScaleLookup = GetComponentLookup<PhysicsGravityScale2D>(true);
 
-        private void CreatePhysicsBody(Entity entity, BodyDef bodyDef, FixtureDef fixtureDef, b2World world)
-        {
-            b2Body body = CreateB2Body(bodyDef, entity, world);
-            EntityManager.AddComponentData(entity, 
-                new PhysicsBody2D { RuntimeBody = body });
+            var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
-            b2Shape shape = null;
-            
-            if (fixtureDef.Shape == Components.Shape.Polygon)
+            foreach ((var bodyDef, Entity entity) in SystemAPI.Query<RefRO<BodyDef>>().WithEntityAccess())
             {
-                b2PolygonShape boxShape = new();
-                boxShape.SetAsBox(fixtureDef.Size.x, fixtureDef.Size.y,
-                    new b2Vec2(fixtureDef.Offset.x, fixtureDef.Offset.y), 0.0f);
-                shape = boxShape;
+                var b2BodyDef = new b2BodyDef
+                {
+                    type = bodyDef.ValueRO.BodyType,
+                    userData = entity
+                };
+            
+                if (transformLookup.HasComponent(entity))
+                {
+                    LocalToWorld transform = transformLookup[entity];
+                    b2BodyDef.position = new b2Vec2(transform.Position.x, transform.Position.y);
+                    b2BodyDef.angle = xmath.ZRotationFromQuaternion(transform.Value.Rotation());
+                }
+            
+                if (velocityLookup.HasComponent(entity))
+                {
+                    PhysicsVelocity2D vel = velocityLookup[entity];
+                    b2BodyDef.linearVelocity = new b2Vec2(vel.Linear.x, vel.Linear.y);
+                    b2BodyDef.angularVelocity = vel.Angular;
+                }
+
+                if (gravityScaleLookup.HasComponent(entity))
+                {
+                    PhysicsGravityScale2D gravityScale = gravityScaleLookup[entity];
+                    b2BodyDef.gravityScale = gravityScale.Value;
+                }
+
+                b2Body body = physicsWorld.CreateBody(b2BodyDef);
+                ecb.AddComponent(entity, new PhysicsBody2D { RuntimeBody = body });
+                ecb.RemoveComponent<BodyDef>(entity);
             }
             
-            if (shape == null)
-                return;
-            
-            var b2FixtureDef = new b2FixtureDef
-            {
-                shape = shape,
-                density = fixtureDef.Density,
-                friction = fixtureDef.Friction,
-                restitution = fixtureDef.Restitution,
-                isSensor = fixtureDef.IsSensor,
-                userData = entity
-            };
+            ecb.Playback(EntityManager);
+            ecb.Dispose();
 
-            EntityManager.AddComponentData(entity, new PhysicsCollider2D
+            ecb = new EntityCommandBuffer(Allocator.TempJob);
+            
+            foreach ((var fixtureRO, PhysicsBody2D body, Entity entity) in SystemAPI.Query<RefRO<FixtureDef>, PhysicsBody2D>().WithEntityAccess())
             {
-                Fixture = body.CreateFixture(b2FixtureDef)
-            });
+                b2Shape shape = null;
+                FixtureDef fixtureDef = fixtureRO.ValueRO;
+            
+                if (fixtureDef.Shape == Components.Shape.Polygon)
+                {
+                    b2PolygonShape boxShape = new();
+                    boxShape.SetAsBox(fixtureDef.Size.x, fixtureDef.Size.y,
+                        new b2Vec2(fixtureDef.Offset.x, fixtureDef.Offset.y), 0.0f);
+                    shape = boxShape;
+                }
+            
+                if (shape == null)
+                    return;
+            
+                var b2FixtureDef = new b2FixtureDef
+                {
+                    shape = shape,
+                    density = fixtureDef.Density,
+                    friction = fixtureDef.Friction,
+                    restitution = fixtureDef.Restitution,
+                    isSensor = fixtureDef.IsSensor,
+                    userData = entity
+                };
+
+                ecb.AddComponent(entity, new PhysicsCollider2D
+                {
+                    Fixture = body.RuntimeBody.CreateFixture(b2FixtureDef)
+                });
+                ecb.RemoveComponent<FixtureDef>(entity);
+            }
+            
+            ecb.Playback(EntityManager);
+            ecb.Dispose();
         }
 
         public void DestroyBody(b2Body body)
@@ -112,36 +145,5 @@ namespace Xedrial.Physics.b2D.Systems
 
         public void AddTriggerEventsHandler(ITriggerEventsHandler triggerEventsHandler)
             => m_ContactListener.AddTriggerEventsHandler(triggerEventsHandler);
-
-        private b2Body CreateB2Body(BodyDef bodyDef, Entity entity, b2World world)
-        {
-            var b2BodyDef = new b2BodyDef
-            {
-                type = bodyDef.BodyType
-            };
-            
-            if (EntityManager.HasComponent<LocalTransform>(entity))
-            {
-                var transform = EntityManager.GetComponentData<LocalTransform>(entity);
-                b2BodyDef.position = new b2Vec2(transform.Position.x, transform.Position.y);
-                b2BodyDef.angle = math.radians(((Quaternion)transform.Rotation).eulerAngles.z);
-            }
-            
-            if (EntityManager.HasComponent<PhysicsVelocity2D>(entity))
-            {
-                var vel = EntityManager.GetComponentData<PhysicsVelocity2D>(entity);
-                b2BodyDef.linearVelocity = new b2Vec2(vel.Linear.x, vel.Linear.y);
-                b2BodyDef.angularVelocity = vel.Angular;
-            }
-
-            if (EntityManager.HasComponent<PhysicsGravityScale2D>(entity))
-            {
-                var gravityScale = EntityManager.GetComponentData<PhysicsGravityScale2D>(entity);
-                b2BodyDef.gravityScale = gravityScale.Value;
-            }
-
-            b2Body body = world.CreateBody(b2BodyDef);
-            return body;
-        }
     }
 }

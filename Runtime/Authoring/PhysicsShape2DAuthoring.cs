@@ -7,7 +7,7 @@ using Xedrial.Physics.b2D.Components;
 namespace Xedrial.Physics.b2D.Authoring
 {
     [DisallowMultipleComponent]
-    public class BoxCollider2DAuthoring : MonoBehaviour
+    public class PhysicsShape2DAuthoring : MonoBehaviour
     {
         /// <summary>
         /// The collider offset from the translation
@@ -71,9 +71,9 @@ namespace Xedrial.Physics.b2D.Authoring
             m_QuadMesh.RecalculateNormals();
         }
 
-        private class BoxCollider2DBaker : Baker<BoxCollider2DAuthoring>
+        private class BoxCollider2DBaker : Baker<PhysicsShape2DAuthoring>
         {
-            public override void Bake(BoxCollider2DAuthoring authoring)
+            public override void Bake(PhysicsShape2DAuthoring authoring)
             {
                 Entity entity = GetEntity(TransformUsageFlags.None);
                 AddComponent(entity, new FixtureDef
@@ -83,7 +83,7 @@ namespace Xedrial.Physics.b2D.Authoring
                     Friction = authoring.m_Friction,
                     Restitution = authoring.m_Restitution,
                     IsSensor = authoring.m_IsSensor,
-                    Size = authoring.m_Size * (float2)(Vector2)authoring.transform.localScale,
+                    Size = authoring.m_Size * (float2)(Vector2)authoring.transform.lossyScale,
                     Shape = Shape.Polygon
                 });
             }

@@ -1,6 +1,6 @@
 {
     "name": "Box2D.NetStandard",
-    "rootNamespace": "",
+    "rootNamespace": "Box2D.NetStandard",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

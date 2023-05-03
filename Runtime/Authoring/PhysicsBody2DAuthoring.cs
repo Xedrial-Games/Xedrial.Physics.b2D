@@ -7,15 +7,15 @@ using Xedrial.Physics.b2D.Components;
 namespace Xedrial.Physics.b2D.Authoring
 {
     [DisallowMultipleComponent]
-    public class RigidBody2DAuthoring : MonoBehaviour
+    public class PhysicsBody2DAuthoring : MonoBehaviour
     {
         [SerializeField] private b2BodyType m_BodyType;
 
-        private class RigidBody2DBaker : Baker<RigidBody2DAuthoring>
+        private class RigidBody2DBaker : Baker<PhysicsBody2DAuthoring>
         {
-            public override void Bake(RigidBody2DAuthoring authoring)
+            public override void Bake(PhysicsBody2DAuthoring authoring)
             {
-                Entity entity = GetEntity(TransformUsageFlags.None);
+                Entity entity = GetEntity(TransformUsageFlags.WorldSpace);
                 AddComponent(entity, new BodyDef
                 {
                     BodyType = authoring.m_BodyType

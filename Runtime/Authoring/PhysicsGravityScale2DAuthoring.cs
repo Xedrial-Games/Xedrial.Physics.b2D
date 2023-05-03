@@ -3,11 +3,6 @@ using UnityEngine;
 
 namespace Xedrial.Physics.b2D.Components
 {
-    public struct PhysicsGravityScale2D : IComponentData
-    {
-        public float Value;
-    }
-
     public class PhysicsGravityScale2DAuthoring : MonoBehaviour
     {
         [SerializeField] private float m_Value = 1f;
